@@ -1,0 +1,8 @@
+polars
+duckdb
+lightgbm
+mlflow
+dvc
+sklearn
+plotly
+ipykernel
