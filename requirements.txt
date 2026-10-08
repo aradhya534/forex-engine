@@ -6,4 +6,4 @@ dvc
 sklearn
 plotly
 ipykernel
-
+xgboost
