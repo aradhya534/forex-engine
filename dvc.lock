@@ -41,8 +41,8 @@ stages:
       size: 920649
     - path: src/components/data_transformation.py
       hash: md5
-      md5: 8200ce41186d7c96d01ce7dfef0108b8
-      size: 5480
+      md5: dd148680878be398869fab13b08ae2ae
+      size: 6930
     params:
       params.yaml:
         features:
@@ -53,8 +53,84 @@ stages:
           - 20
           - 30
           features_path: artifacts/features.parquet
+        split:
+          test_frac: 0.2
+          calibration_frac: 0.2
+          fit_path: artifacts/fit.parquet
+          calibration_path: artifacts/calibration.parquet
+          test_path: artifacts/test.parquet
     outs:
+    - path: artifacts/calibration.parquet
+      hash: md5
+      md5: 9d8c3e1d7bccb9976cbe10c17aa02305
+      size: 2815476
     - path: artifacts/features.parquet
       hash: md5
       md5: 8e551c31e14dd6e3cde79c7922404e78
       size: 16377608
+    - path: artifacts/fit.parquet
+      hash: md5
+      md5: f1328c49b9d20492a708ac9955831c60
+      size: 9894262
+    - path: artifacts/test.parquet
+      hash: md5
+      md5: 7586e937c90f8c731f90df58a035e53b
+      size: 3576001
+  train:
+    cmd: python -m src.components.model_trainer
+    deps:
+    - path: artifacts/calibration.parquet
+      hash: md5
+      md5: 9d8c3e1d7bccb9976cbe10c17aa02305
+      size: 2815476
+    - path: artifacts/fit.parquet
+      hash: md5
+      md5: f1328c49b9d20492a708ac9955831c60
+      size: 9894262
+    - path: artifacts/test.parquet
+      hash: md5
+      md5: 7586e937c90f8c731f90df58a035e53b
+      size: 3576001
+    - path: src/components/model_trainer.py
+      hash: md5
+      md5: 77657e72a05539d741cc983919a6046f
+      size: 7757
+    params:
+      params.yaml:
+        features.lags: 30
+        features.windows:
+        - 5
+        - 10
+        - 20
+        - 30
+        model:
+          version: lgbm-1
+          tier_high_top_frac: 0.1
+          tier_medium_top_frac: 0.3
+          lightgbm:
+            n_estimators: 300
+            learning_rate: 0.03
+            num_leaves: 15
+            min_child_samples: 100
+            subsample: 0.8
+            subsample_freq: 1
+            colsample_bytree: 0.8
+            reg_lambda: 1.0
+            random_state: 42
+        paths:
+          model_path: artifacts/model.joblib
+          signal_config_path: artifacts/signal_config.json
+          metrics_path: artifacts/metrics.json
+    outs:
+    - path: artifacts/metrics.json
+      hash: md5
+      md5: 9f1459b51209e03dae523ddbc9bb6a7d
+      size: 281
+    - path: artifacts/model.joblib
+      hash: md5
+      md5: 0634d570a1b810ea899df8dd0ef2e613
+      size: 553274
+    - path: artifacts/signal_config.json
+      hash: md5
+      md5: c6bd034fa1b63cb7ef9e06b3129fc52c
+      size: 1177

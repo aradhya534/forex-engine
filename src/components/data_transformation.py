@@ -86,6 +86,24 @@ class DataTransformation:
             label_raw=direction("ret_raw"),     # from raw returns: what we evaluate on
         )
 
+    def split(self, feats: pl.DataFrame):
+        """Time-ordered: fit | calibration | test. Rows without a label (latest day, flat days) are excluded."""
+        sp = self.params["split"]
+        labelled = feats.drop_nulls(["label", "label_raw"])
+        dates = labelled["date"].unique().sort()
+        cut = dates[int(len(dates) * (1 - sp["test_frac"]))]
+        train = labelled.filter(pl.col("date") < cut)
+        test = labelled.filter(pl.col("date") >= cut)
+
+        tdates = train["date"].unique().sort()
+        cal_start = tdates[int(len(tdates) * (1 - sp["calibration_frac"]))]
+        fit = train.filter(pl.col("date") < cal_start)
+        cal = train.filter(pl.col("date") >= cal_start)
+        logging.info("split | fit: %d rows (< %s) | calibration: %d rows (%s to %s) | test: %d rows (>= %s)",
+                     fit.height, cal_start, cal.height, cal_start, cut, test.height, cut)
+        return fit, cal, test
+
+
     def initiate_data_transformation(self) -> str:
         try:
             logging.info("data transformation started")
@@ -112,9 +130,17 @@ class DataTransformation:
             os.makedirs(os.path.dirname(out), exist_ok=True)
             feats.write_parquet(out)
             logging.info("wrote %s (%d rows, %d features)", out, feats.height, len(cols))
+            # the full file above is kept for serving (it contains the latest, still unlabelled, day per currency)
+            fit, cal, test = self.split(feats)
+            for frame, key in ((fit, "fit_path"), (cal, "calibration_path"), (test, "test_path")):
+                path = self.params["split"][key]
+                os.makedirs(os.path.dirname(path), exist_ok=True)
+                frame.write_parquet(path)
+                logging.info("wrote %s (%d rows)", path, frame.height)
             return out
         except Exception as e:
             raise CustomException(e, sys)
+
 
 
 if __name__ == "__main__":

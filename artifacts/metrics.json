@@ -1,0 +1,11 @@
+{
+  "test_rows": 7964,
+  "test_share_up": 0.5046,
+  "accuracy": 0.5084,
+  "accuracy_always_train_majority": 0.4954,
+  "roc_auc": 0.5163,
+  "log_loss_calibrated": 0.6934,
+  "log_loss_uncalibrated": 0.695,
+  "log_loss_base_rate_only": 0.6932,
+  "brier_calibrated": 0.2501
+}

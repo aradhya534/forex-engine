@@ -1,2 +1,7 @@
 /clean.parquet
 /features.parquet
+/fit.parquet
+/calibration.parquet
+/test.parquet
+/model.joblib
+/signal_config.json

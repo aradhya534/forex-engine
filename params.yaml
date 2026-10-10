@@ -4,14 +4,41 @@ data:
   currencies: [USD, GBP, JPY, CHF, AUD, CAD, LKR]
 
 cleaning:
-  glitch_threshold: 0.1
+  glitch_threshold: 0.10
   glitch_reversal: 0.3
 
 split:
   test_frac: 0.2
+  calibration_frac: 0.2          # last 20% of the training dates: used only to calibrate and set signal tiers
+  fit_path: artifacts/fit.parquet
+  calibration_path: artifacts/calibration.parquet
+  test_path: artifacts/test.parquet
 
 features:
   lags: 30
   windows: [5, 10, 20, 30]
   features_path: artifacts/features.parquet
-  
+
+model:
+  version: lgbm-1
+  tier_high_top_frac: 0.10       # top 10% most confident calls = high
+  tier_medium_top_frac: 0.30     # next 20% = medium, the rest = low
+  lightgbm:
+    n_estimators: 300
+    learning_rate: 0.03
+    num_leaves: 15
+    min_child_samples: 100
+    subsample: 0.8
+    subsample_freq: 1
+    colsample_bytree: 0.8
+    reg_lambda: 1.0
+    random_state: 42
+
+paths:
+  model_path: artifacts/model.joblib
+  signal_config_path: artifacts/signal_config.json
+  metrics_path: artifacts/metrics.json
+
+mlflow:
+  tracking_uri: sqlite:///mlflow.db
+  experiment: forex-direction

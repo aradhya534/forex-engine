@@ -17,7 +17,28 @@ stages:
       - artifacts/clean.parquet
     params:
       - features
+      - split
     outs:
       - artifacts/features.parquet
+      - artifacts/fit.parquet
+      - artifacts/calibration.parquet
+      - artifacts/test.parquet
 
-      
+  train:
+    cmd: python -m src.components.model_trainer
+    deps:
+      - src/components/model_trainer.py
+      - artifacts/fit.parquet
+      - artifacts/calibration.parquet
+      - artifacts/test.parquet
+    params:
+      - model
+      - paths
+      - features.lags
+      - features.windows
+    outs:
+      - artifacts/model.joblib
+      - artifacts/signal_config.json
+    metrics:
+      - artifacts/metrics.json:
+          cache: false
