@@ -1,0 +1,11 @@
+[2026-10-10 18:23:40,969] 100 root - INFO - data ingestion started
+[2026-10-10 18:23:41,102] 28 root - INFO - read 505223 rows, 5 columns from data/raw/daily_forex_rates.csv
+[2026-10-10 18:23:41,102] 40 root - INFO - check passed: all expected columns present
+[2026-10-10 18:23:41,123] 45 root - INFO - check passed: base currency is EUR
+[2026-10-10 18:23:41,123] 49 root - INFO - check passed: date parsed as a date
+[2026-10-10 18:23:41,130] 54 root - INFO - check passed: no nulls in key columns
+[2026-10-10 18:23:41,138] 59 root - INFO - check passed: all rates are positive
+[2026-10-10 18:23:41,197] 64 root - INFO - check passed: no duplicate (currency, date) rows
+[2026-10-10 18:23:41,254] 94 root - WARNING - repaired 2 glitch rows
+[2026-10-10 18:23:41,255] 95 root - INFO - clean frame: 37558 rows, 7 currencies
+[2026-10-10 18:23:41,279] 108 root - INFO - wrote artifacts/clean.parquet (37558 rows)

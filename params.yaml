@@ -1,4 +1,16 @@
-split_frac:0.8
-glitch_threshold:0.05
-glitch_reversal:0.3
-currencies:[USD, GBP, JPY, CHF, AUD, CAD, LKR]
+data:
+  raw_path: data/raw/daily_forex_rates.csv
+  clean_path: artifacts/clean.parquet
+  currencies: [USD, GBP, JPY, CHF, AUD, CAD, LKR]
+
+cleaning:
+  glitch_threshold: 0.1
+  glitch_reversal: 0.3
+
+split:
+  test_frac: 0.2
+
+features:
+  lags: 30
+  windows: [5, 10, 20, 30]
+  features_path: artifacts/features.parquet
