@@ -1,0 +1,5 @@
+outs:
+- md5: 115c4d6f40125c05daad08a8f5929fcc
+  size: 22183371
+  hash: md5
+  path: daily_forex_rates.csv
