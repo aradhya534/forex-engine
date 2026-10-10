@@ -1,0 +1,11 @@
+stages:
+  ingest:
+    cmd: python -m src.components.data_ingestion
+    deps:
+      - src/components/data_ingestion.py
+      - data/raw/daily_forex_rates.csv
+    params:
+      - data
+      - cleaning
+    outs:
+      - artifacts/clean.parquet
