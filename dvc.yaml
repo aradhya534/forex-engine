@@ -9,3 +9,15 @@ stages:
       - cleaning
     outs:
       - artifacts/clean.parquet
+
+  transform:
+    cmd: python -m src.components.data_transformation
+    deps:
+      - src/components/data_transformation.py
+      - artifacts/clean.parquet
+    params:
+      - features
+    outs:
+      - artifacts/features.parquet
+
+      

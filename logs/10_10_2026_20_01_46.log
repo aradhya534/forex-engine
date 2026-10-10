@@ -1,0 +1,5 @@
+[2026-10-10 20:01:46,544] 91 root - INFO - data transformation started
+[2026-10-10 20:01:46,630] 93 root - INFO - read 37558 rows from artifacts/clean.parquet
+[2026-10-10 20:01:46,740] 103 root - INFO - dropped 413 warm-up/non-finite rows, 37145 remain
+[2026-10-10 20:01:46,752] 108 root - INFO - labelled rows: 36955 | latest day per currency (no label yet): 7 | flat next day (no label): 183 | share up: 0.4986
+[2026-10-10 20:01:46,813] 114 root - INFO - wrote artifacts/features.parquet (37145 rows, 63 features)

@@ -32,3 +32,29 @@ stages:
       hash: md5
       md5: 5c33d3e8bc5bf364c2282953a05e2688
       size: 920649
+  transform:
+    cmd: python -m src.components.data_transformation
+    deps:
+    - path: artifacts/clean.parquet
+      hash: md5
+      md5: 5c33d3e8bc5bf364c2282953a05e2688
+      size: 920649
+    - path: src/components/data_transformation.py
+      hash: md5
+      md5: 8200ce41186d7c96d01ce7dfef0108b8
+      size: 5480
+    params:
+      params.yaml:
+        features:
+          lags: 30
+          windows:
+          - 5
+          - 10
+          - 20
+          - 30
+          features_path: artifacts/features.parquet
+    outs:
+    - path: artifacts/features.parquet
+      hash: md5
+      md5: 8e551c31e14dd6e3cde79c7922404e78
+      size: 16377608
