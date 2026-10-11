@@ -1,0 +1,3 @@
+[2026-10-11 10:43:11,882] 38 root - INFO - predict pipeline ready | model lgbm-1 | 7 currencies | latest data 2026-10-07
+[2026-10-11 10:43:12,008] 56 root - INFO - predict LKR | prob_up 0.4684 | strength medium | 117.2 ms
+[2026-10-11 10:43:51,402] 56 root - INFO - predict LKR | prob_up 0.4684 | strength medium | 9.2 ms

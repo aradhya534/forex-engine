@@ -7,7 +7,6 @@ import joblib
 import lightgbm as lgb
 import mlflow
 import numpy as np
-import pandas as pd
 import polars as pl
 import yaml
 from sklearn.linear_model import LogisticRegression
@@ -17,22 +16,7 @@ from src.components.data_transformation import get_feature_columns
 from src.exception import CustomException
 from src.logger import logging
 
-
-def make_X(frame: pl.DataFrame, feature_cols: list, currencies: list) -> pd.DataFrame:
-    """Model input. Shared with the prediction pipeline so training and serving build X identically."""
-    X = frame.select(["currency"] + feature_cols).to_pandas()
-    X["currency"] = pd.Categorical(X["currency"], categories=sorted(currencies))
-    return X
-
-
-def to_logit(p: np.ndarray) -> np.ndarray:
-    p = np.clip(p, 1e-6, 1 - 1e-6)
-    return np.log(p / (1 - p)).reshape(-1, 1)
-
-
-def assign_tier(conf: np.ndarray, high_min: float, medium_min: float) -> np.ndarray:
-    return np.where(conf >= high_min, "high", np.where(conf >= medium_min, "medium", "low"))
-
+from src.components.modeling_utils import make_X, to_logit, assign_tier
 
 @dataclass
 class ModelTrainerConfig:

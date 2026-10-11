@@ -1,0 +1,10 @@
+[2026-10-11 11:59:56,800] 38 root - INFO - predict pipeline ready | model lgbm-1 | 7 currencies | latest data 2026-10-07
+[2026-10-11 11:59:56,800] 38 root - INFO - predict pipeline ready | model lgbm-1 | 7 currencies | latest data 2026-10-07
+[2026-10-11 11:59:56,800] 38 root - INFO - predict pipeline ready | model lgbm-1 | 7 currencies | latest data 2026-10-07
+[2026-10-11 11:59:57,009] 56 root - INFO - predict USD | prob_up 0.4694 | strength medium | 191.2 ms
+[2026-10-11 12:00:43,845] 56 root - INFO - predict GBP | prob_up 0.4638 | strength medium | 77.2 ms
+[2026-10-11 12:00:47,483] 56 root - INFO - predict GBP | prob_up 0.4638 | strength medium | 12.9 ms
+[2026-10-11 12:00:49,739] 56 root - INFO - predict GBP | prob_up 0.4638 | strength medium | 13.5 ms
+[2026-10-11 12:00:50,367] 56 root - INFO - predict GBP | prob_up 0.4638 | strength medium | 12.7 ms
+[2026-10-11 12:01:00,117] 56 root - INFO - predict CHF | prob_up 0.4912 | strength low | 17.1 ms
+[2026-10-11 12:01:11,345] 56 root - INFO - predict CAD | prob_up 0.4862 | strength low | 11.7 ms
