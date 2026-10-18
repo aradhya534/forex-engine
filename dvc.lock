@@ -7,10 +7,14 @@ stages:
       hash: md5
       md5: 115c4d6f40125c05daad08a8f5929fcc
       size: 22183371
+    - path: data/raw/recent_rates.csv
+      hash: md5
+      md5: e0681bc0e612d388960d2eaca3a4dfe7
+      size: 4700
     - path: src/components/data_ingestion.py
       hash: md5
-      md5: 2e495ebaf11cee7e12ba17f1458189f1
-      size: 4519
+      md5: d98384875ffdfb15f6d12bc0bbcad2d3
+      size: 7891
     params:
       params.yaml:
         cleaning:
@@ -27,18 +31,26 @@ stages:
           - AUD
           - CAD
           - LKR
+        fetch:
+          enabled: true
+          base_url: https://api.frankfurter.dev/v2/rates
+          overlap_days: 14
+          max_median_overlap_diff: 0.005
+          timeout_seconds: 30
+          retries: 3
+          recent_path: data/raw/recent_rates.csv
     outs:
     - path: artifacts/clean.parquet
       hash: md5
-      md5: 5c33d3e8bc5bf364c2282953a05e2688
-      size: 920649
+      md5: 9ebbc622dcc9d532bcb1a18fcf81854d
+      size: 910514
   transform:
     cmd: python -m src.components.data_transformation
     deps:
     - path: artifacts/clean.parquet
       hash: md5
-      md5: 5c33d3e8bc5bf364c2282953a05e2688
-      size: 920649
+      md5: 9ebbc622dcc9d532bcb1a18fcf81854d
+      size: 910514
     - path: src/components/data_transformation.py
       hash: md5
       md5: dd148680878be398869fab13b08ae2ae
@@ -62,39 +74,39 @@ stages:
     outs:
     - path: artifacts/calibration.parquet
       hash: md5
-      md5: 9d8c3e1d7bccb9976cbe10c17aa02305
-      size: 2815476
+      md5: 06bc4fdde7e41b89176b16152b5b0658
+      size: 2818469
     - path: artifacts/features.parquet
       hash: md5
-      md5: 8e551c31e14dd6e3cde79c7922404e78
-      size: 16377608
+      md5: 056dd12b705e26fcdc091c45805f664d
+      size: 16354362
     - path: artifacts/fit.parquet
       hash: md5
-      md5: f1328c49b9d20492a708ac9955831c60
-      size: 9894262
+      md5: 608112bfe069333ed179d51194f803f9
+      size: 9909799
     - path: artifacts/test.parquet
       hash: md5
-      md5: 7586e937c90f8c731f90df58a035e53b
-      size: 3576001
+      md5: fc4df57769c3403289f101f38ece5a6b
+      size: 3575799
   train:
     cmd: python -m src.components.model_trainer
     deps:
     - path: artifacts/calibration.parquet
       hash: md5
-      md5: 9d8c3e1d7bccb9976cbe10c17aa02305
-      size: 2815476
+      md5: 06bc4fdde7e41b89176b16152b5b0658
+      size: 2818469
     - path: artifacts/fit.parquet
       hash: md5
-      md5: f1328c49b9d20492a708ac9955831c60
-      size: 9894262
+      md5: 608112bfe069333ed179d51194f803f9
+      size: 9909799
     - path: artifacts/test.parquet
       hash: md5
-      md5: 7586e937c90f8c731f90df58a035e53b
-      size: 3576001
+      md5: fc4df57769c3403289f101f38ece5a6b
+      size: 3575799
     - path: src/components/model_trainer.py
       hash: md5
-      md5: 77657e72a05539d741cc983919a6046f
-      size: 7757
+      md5: bd938e92159aa590e8010a73008f656e
+      size: 7138
     params:
       params.yaml:
         features.lags: 30
@@ -124,13 +136,48 @@ stages:
     outs:
     - path: artifacts/metrics.json
       hash: md5
-      md5: 9f1459b51209e03dae523ddbc9bb6a7d
-      size: 281
+      md5: d81efd946df526814c8129d54212267e
+      size: 279
     - path: artifacts/model.joblib
       hash: md5
-      md5: 0634d570a1b810ea899df8dd0ef2e613
-      size: 553274
+      md5: 26f4620fd18f37cfcb84bf5258f1f192
+      size: 553226
     - path: artifacts/signal_config.json
       hash: md5
-      md5: c6bd034fa1b63cb7ef9e06b3129fc52c
+      md5: 5bc039aa2375704da4ff4ac06b90259d
       size: 1177
+  fetch:
+    cmd: python -m src.components.data_fetch
+    deps:
+    - path: data/raw/daily_forex_rates.csv
+      hash: md5
+      md5: 115c4d6f40125c05daad08a8f5929fcc
+      size: 22183371
+    - path: src/components/data_fetch.py
+      hash: md5
+      md5: 91feed8e1054c68294c1e98e3ad048ca
+      size: 3931
+    params:
+      params.yaml:
+        data.currencies:
+        - USD
+        - GBP
+        - JPY
+        - CHF
+        - AUD
+        - CAD
+        - LKR
+        data.raw_path: data/raw/daily_forex_rates.csv
+        fetch:
+          enabled: true
+          base_url: https://api.frankfurter.dev/v2/rates
+          overlap_days: 14
+          max_median_overlap_diff: 0.005
+          timeout_seconds: 30
+          retries: 3
+          recent_path: data/raw/recent_rates.csv
+    outs:
+    - path: data/raw/recent_rates.csv
+      hash: md5
+      md5: e0681bc0e612d388960d2eaca3a4dfe7
+      size: 4700

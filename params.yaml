@@ -42,3 +42,13 @@ paths:
 mlflow:
   tracking_uri: sqlite:///mlflow.db
   experiment: forex-direction
+
+
+fetch:
+  enabled: true
+  base_url: https://api.frankfurter.dev/v2/rates
+  overlap_days: 14                  # re-fetch this many days before the file ends, to check the two sources agree and to splice
+  max_median_overlap_diff: 0.005    # stop if the API's rates differ from the Kaggle file by more than 0.5% (median)
+  timeout_seconds: 30
+  retries: 3
+  recent_path: data/raw/recent_rates.csv

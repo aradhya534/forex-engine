@@ -1,0 +1,19 @@
+[2026-10-17 22:27:40,367] 155 root - INFO - data ingestion started
+[2026-10-17 22:27:40,404] 28 root - INFO - read 505223 rows, 5 columns from data/raw/daily_forex_rates.csv
+[2026-10-17 22:27:40,419] 65 root - INFO - overlap check AUD | 15 days | median diff 0.1108% | max diff 0.5045%
+[2026-10-17 22:27:40,419] 65 root - INFO - overlap check CAD | 15 days | median diff 0.0755% | max diff 0.4569%
+[2026-10-17 22:27:40,419] 65 root - INFO - overlap check CHF | 15 days | median diff 0.0674% | max diff 0.5156%
+[2026-10-17 22:27:40,419] 65 root - INFO - overlap check GBP | 15 days | median diff 0.0486% | max diff 0.2915%
+[2026-10-17 22:27:40,419] 65 root - INFO - overlap check JPY | 15 days | median diff 0.2350% | max diff 0.6572%
+[2026-10-17 22:27:40,420] 65 root - INFO - overlap check LKR | 13 days | median diff 0.1522% | max diff 0.4086%
+[2026-10-17 22:27:40,420] 65 root - INFO - overlap check USD | 15 days | median diff 0.1489% | max diff 0.3601%
+[2026-10-17 22:27:40,435] 82 root - INFO - appended 68 recent rows (2026-10-08 to 2026-10-17)
+[2026-10-17 22:27:40,436] 95 root - INFO - check passed: all expected columns present
+[2026-10-17 22:27:40,441] 100 root - INFO - check passed: base currency is EUR
+[2026-10-17 22:27:40,441] 104 root - INFO - check passed: date parsed as a date
+[2026-10-17 22:27:40,442] 109 root - INFO - check passed: no nulls in key columns
+[2026-10-17 22:27:40,443] 114 root - INFO - check passed: all rates are positive
+[2026-10-17 22:27:40,486] 119 root - INFO - check passed: no duplicate (currency, date) rows
+[2026-10-17 22:27:40,504] 149 root - WARNING - repaired 0 glitch rows
+[2026-10-17 22:27:40,505] 150 root - INFO - clean frame: 37607 rows, 7 currencies
+[2026-10-17 22:27:40,519] 163 root - INFO - wrote artifacts/clean.parquet (37607 rows)

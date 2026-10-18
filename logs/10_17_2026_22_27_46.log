@@ -1,0 +1,4 @@
+[2026-10-17 22:27:46,093] 45 root - INFO - model training started
+[2026-10-17 22:27:46,195] 40 root - INFO - loaded splits | fit: 22712 | calibration: 6321 | test: 7970
+[2026-10-17 22:27:49,241] 135 root - INFO - test metrics: {'test_rows': 7970, 'test_share_up': 0.504, 'accuracy': 0.5097, 'accuracy_always_train_majority': 0.496, 'roc_auc': 0.5203, 'log_loss_calibrated': 0.693, 'log_loss_uncalibrated': 0.6941, 'log_loss_base_rate_only': 0.6932, 'brier_calibrated': 0.2499}
+[2026-10-17 22:27:49,241] 136 root - INFO - tier hit rates (test): {'high': {'n_days': 778, 'hit_rate': 0.5386}, 'medium': {'n_days': 1640, 'hit_rate': 0.511}, 'low': {'n_days': 5552, 'hit_rate': 0.5052}}

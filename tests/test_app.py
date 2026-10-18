@@ -73,29 +73,43 @@ def test_unreachable_gateway_is_reported():
             _client().predict("LKR")
 
 
-def _run_app():
+def _fake_gateway(predict_status=200):
+    """Mock the HTTP layer. `requests` exists once per process, so this works however the app's modules are loaded."""
+    def fake_request(method, url, **kwargs):
+        if url.endswith("/currencies"):
+            return _resp(200, {"currencies": ["USD", "LKR"]})
+        if url.endswith("/model-info"):
+            return _resp(200, INFO)
+        if url.endswith("/predict"):
+            return _resp(predict_status, SIGNAL if predict_status == 200 else None)
+        return _resp(404)
+    token = _resp(200, {"access_token": "tok", "expires_in": 3600})
+    return patch("requests.post", return_value=token), patch("requests.request", side_effect=fake_request)
+
+
+def _run_app(monkeypatch):
+    monkeypatch.setenv("WSO2_CONSUMER_KEY", "k")          # whatever a real .env contains, tests use these
+    monkeypatch.setenv("WSO2_CONSUMER_SECRET", "s")
+    monkeypatch.setenv("VERIFY_TLS", "true")
     st.cache_data.clear(); st.cache_resource.clear()
     return AppTest.from_file(str(Path(__file__).resolve().parent.parent / "app" / "main.py"), default_timeout=20)
 
 
-def test_app_shows_the_signal():
-    with patch.object(GatewayClient, "currencies", return_value={"currencies": ["USD", "LKR"]}), \
-         patch.object(GatewayClient, "model_info", return_value=INFO), \
-         patch.object(GatewayClient, "predict", return_value=SIGNAL):
-        at = _run_app().run()
+def test_app_shows_the_signal(monkeypatch):
+    post, request = _fake_gateway()
+    with post, request:
+        at = _run_app(monkeypatch).run()
         assert not at.exception
         at.button[0].click().run()
         assert not at.exception
-        labels = [m.label for m in at.metric]
-        assert labels == ["Direction", "Probability up", "Strength"]
+        assert [m.label for m in at.metric] == ["Direction", "Probability up", "Strength"]
         assert "47.3%" in at.metric[1].value
 
 
-def test_app_shows_a_friendly_message_when_throttled():
-    with patch.object(GatewayClient, "currencies", return_value={"currencies": ["USD", "LKR"]}), \
-         patch.object(GatewayClient, "model_info", return_value=INFO), \
-         patch.object(GatewayClient, "predict", side_effect=GatewayError(429, "Rate limit reached for this subscription plan.")):
-        at = _run_app().run()
+def test_app_shows_a_friendly_message_when_throttled(monkeypatch):
+    post, request = _fake_gateway(predict_status=429)
+    with post, request:
+        at = _run_app(monkeypatch).run()
         at.button[0].click().run()
         assert not at.exception
         assert any("Rate limit" in e.value for e in at.error)

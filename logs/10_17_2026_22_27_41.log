@@ -1,0 +1,9 @@
+[2026-10-17 22:27:41,321] 109 root - INFO - data transformation started
+[2026-10-17 22:27:41,342] 111 root - INFO - read 37607 rows from artifacts/clean.parquet
+[2026-10-17 22:27:41,372] 121 root - INFO - dropped 413 warm-up/non-finite rows, 37194 remain
+[2026-10-17 22:27:41,378] 126 root - INFO - labelled rows: 37003 | latest day per currency (no label yet): 7 | flat next day (no label): 184 | share up: 0.4984
+[2026-10-17 22:27:41,412] 132 root - INFO - wrote artifacts/features.parquet (37194 rows, 63 features)
+[2026-10-17 22:27:41,424] 102 root - INFO - split | fit: 22712 rows (< 2018-11-27) | calibration: 6321 rows (2018-11-27 to 2022-05-31) | test: 7970 rows (>= 2022-05-31)
+[2026-10-17 22:27:41,448] 139 root - INFO - wrote artifacts/fit.parquet (22712 rows)
+[2026-10-17 22:27:41,459] 139 root - INFO - wrote artifacts/calibration.parquet (6321 rows)
+[2026-10-17 22:27:41,471] 139 root - INFO - wrote artifacts/test.parquet (7970 rows)

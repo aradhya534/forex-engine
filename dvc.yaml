@@ -1,12 +1,27 @@
 stages:
+  fetch:
+    cmd: python -m src.components.data_fetch
+    always_changed: true
+    deps:
+      - src/components/data_fetch.py
+      - data/raw/daily_forex_rates.csv
+    params:
+      - data.raw_path
+      - data.currencies
+      - fetch
+    outs:
+      - data/raw/recent_rates.csv
+
   ingest:
     cmd: python -m src.components.data_ingestion
     deps:
       - src/components/data_ingestion.py
       - data/raw/daily_forex_rates.csv
+      - data/raw/recent_rates.csv
     params:
       - data
       - cleaning
+      - fetch
     outs:
       - artifacts/clean.parquet
 
@@ -42,3 +57,4 @@ stages:
     metrics:
       - artifacts/metrics.json:
           cache: false
+
