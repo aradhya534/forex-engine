@@ -4,7 +4,7 @@ A reproducible machine-learning pipeline that estimates the probability that a c
 
 > **Educational project, not financial advice.** Daily currency direction is close to unpredictable, and this project measures that honestly instead of hiding it (see [Results](#results-and-what-they-mean)). The point of the project is the engineering around the model: a tested data pipeline, an API contract, and a managed gateway.
 
-Related article: *Beyond the Endpoint: How WSO2 API Manager Helps Build Secure and Reliable APIs* ([link](ADD-ARTICLE-LINK-HERE)).
+Related article: *Beyond the Endpoint: How WSO2 API Manager Helps Build Secure and Reliable APIs* ([link](https://medium.com/@malithiaradhya53/beyond-the-endpoint-what-i-learned-putting-a-forex-signal-api-behind-wso2-api-manager-6a69b3d909a3)).
 
 ## WSO2 API Manager at a glance
 
