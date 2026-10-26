@@ -1,126 +1,271 @@
-# Forex Exchange Rate Prediction Engine
+# Forex Direction Signal API
 
-An end-to-end MLOps project: ingest daily forex rates, engineer time-series features, train and track models, serve predictions through an enterprise API gateway, and expose them in a web portal.
+A reproducible machine-learning pipeline that estimates the probability that a currency's exchange rate against the euro will be higher on the **next trading day**, served through **WSO2 API Manager** (OAuth2, subscriptions, rate limiting) and consumed by a Streamlit app.
 
-> **Status:** Phase 0 (EDA and model prototype) in progress. Sections marked _planned_ describe the target design, not finished work.
+> **Educational project, not financial advice.** Daily currency direction is close to unpredictable, and this project measures that honestly instead of hiding it (see [Results](#results-and-what-they-mean)). The point of the project is the engineering around the model: a tested data pipeline, an API contract, and a managed gateway.
 
-## Stack
+Related article: *Beyond the Endpoint: How WSO2 API Manager Helps Build Secure and Reliable APIs* ([link](ADD-ARTICLE-LINK-HERE)).
 
-| Layer | Tools |
+## WSO2 API Manager at a glance
+
+The prediction service never faces its callers directly; every call goes through a WSO2 API Manager 4.7 gateway.
+
+- **Published from a contract.** FastAPI's OpenAPI 3.0.2 definition was imported as `ForexDirectionAPI` (context `/forex`, version `1.0.0`) and published through the Publisher.
+- **OAuth2 at the gateway.** An application is subscribed to the API and obtains short-lived tokens with the client-credentials grant. Requests without a valid token are rejected before they reach the backend.
+- **Rate limiting.** A subscription policy of 5 requests per minute was attached, and over-quota requests were rejected with HTTP 429.
+- **Managed change.** API changes were rolled out as new revisions without recreating the application or its subscription.
+- **A real consumer.** The Streamlit app talks only to the gateway, caches its token, refreshes it on a 401, and shows a plain message on a 429.
+
+Full walkthrough, the exact steps, observed gateway responses and the problems I hit: **[docs/wso2-integration.md](docs/wso2-integration.md)**.
+
+## What is built, and what is not
+
+| Area | Status |
 |---|---|
-| Data processing | Polars, DuckDB |
-| Data and pipeline versioning | DVC |
-| Modelling and tracking | LightGBM, scikit-learn, MLflow (registry) |
-| Prediction service | FastAPI, Pydantic v2, Python 3.12 |
-| API management | WSO2 API Manager 4.x (OAuth2, throttling, developer portal) |
-| Frontend | Streamlit, Plotly |
-| Orchestration | Docker, Docker Compose, GitHub Actions |
+| EDA and model experiments (`notebooks/`) | Done |
+| Data ingestion: schema checks, cleaning, glitch repair (`src/components/data_ingestion.py`) | Done |
+| Recent-data fetch from the Frankfurter API, with an overlap check and splice at the seam (`data_fetch.py`) | Done |
+| Feature engineering: 63 numeric features, no look-ahead (tested) (`data_transformation.py`) | Done |
+| LightGBM training, probability calibration, signal tiers, MLflow run tracking (`model_trainer.py`) | Done |
+| DVC pipeline: `fetch`, `ingest`, `transform`, `train`, with parameters in `params.yaml` | Done |
+| FastAPI prediction service with an OpenAPI 3.0.2 contract (`src/api/main.py`) | Done |
+| **WSO2 API Manager integration**: OpenAPI import, publish, OAuth2 client credentials, application subscription, subscription throttling | Done |
+| Streamlit client that calls the API only through the WSO2 gateway (`app/`) | Done |
+| Automated tests (32): pipeline, no-look-ahead, merge logic, API, gateway client, UI | Done |
+| Docker and Docker Compose for the whole stack | Planned |
+| Frozen training window, scheduled daily job, and a live prediction ledger scored against real outcomes | Planned |
+| GitHub Actions CI | Planned |
+| MLflow model registry (runs are tracked today; registration is not) | Planned |
+| OAuth scopes per operation, WSO2 analytics | Planned |
 
-## Roadmap
+## Architecture
 
-| Phase | Scope | Status |
-|---|---|---|
-| 0 | EDA and model prototype (`notebooks/`) | In progress |
-| 1 | Ingestion, schema checks, DVC (`src/data/ingest.py`, `dvc.yaml`) | Planned |
-| 2 | Polars feature engine (`src/features/build_features.py`) | Planned |
-| 3 | LightGBM training, time-series CV, MLflow (`src/models/train.py`) | Planned |
-| 4 | FastAPI prediction service (`src/api/main.py`) | Planned |
-| 5 | WSO2 API Manager integration (OpenAPI 3.0, OAuth2, rate limits) | Planned |
-| 6 | Streamlit app via the WSO2 gateway (`app/main.py`) | Planned |
-| 7 | Multi-container orchestration (`docker-compose.yml`) | Planned |
+### What exists today
 
-## Repository layout
+```mermaid
+flowchart LR
+    subgraph DATA["Data pipeline - DVC stages"]
+        direction TB
+        KG["Kaggle CSV<br/>2004 to Oct 2026<br/>DVC-tracked"]
+        FR["Frankfurter API<br/>recent daily rates"]
+        FE["fetch<br/>download recent rates"]
+        IN["ingest<br/>validate, merge, clean"]
+        TF["transform<br/>63 features, labels, date split"]
+        TR["train<br/>LightGBM + calibration"]
+        FR --> FE
+        KG --> IN
+        FE --> IN
+        IN --> TF
+        TF --> TR
+    end
 
+    FT[("features.parquet")]
+    MD[("model.joblib<br/>signal_config.json")]
+    ML["MLflow<br/>local SQLite"]
+
+    TF --> FT
+    TR --> MD
+    TR -.-> ML
+
+    subgraph SERVE["Prediction service"]
+        API["FastAPI :8000<br/>/predict /model-info<br/>/currencies /health"]
+    end
+
+    FT --> API
+    MD --> API
+
+    GW["WSO2 API Manager<br/>gateway :8243<br/>OAuth2, subscription, throttling"]
+    TK["WSO2 token endpoint :9443"]
+    UI["Streamlit app<br/>Plotly gauge"]
+
+    UI -->|"1. client credentials"| TK
+    UI -->|"2. Bearer token"| GW
+    GW -->|"permitted requests"| API
 ```
-forex-engine/
-├── data/
-│   ├── raw/            # daily_forex_rates.csv (DVC-tracked from Phase 1)
-│   └── processed/
-├── notebooks/
-│   ├── 00_eda.ipynb              # exploration, cleaning rules, baselines
-│   └── 01_model_prototype.ipynb  # throwaway model prototype
-├── src/
-│   ├── data/  features/  models/  api/
-├── app/                # Streamlit (planned)
-├── tests/
-└── README.md
+
+How a request flows:
+
+1. The Streamlit app exchanges its consumer key and secret for a short-lived access token at the WSO2 token endpoint (OAuth2 client-credentials grant).
+2. It calls the gateway on port 8243 with `Authorization: Bearer <token>`.
+3. The gateway checks the token and the application's subscription, applies the throttling policy, and only then forwards the request to the FastAPI service on port 8000.
+4. FastAPI builds the model input from the latest row of `features.parquet`, runs the calibrated model, and returns the signal.
+
+### Where it is heading (planned, not built)
+
+```mermaid
+flowchart LR
+    subgraph COMPOSE["Docker Compose - planned"]
+        direction TB
+        SCH["daily job container<br/>scheduled"]
+        API["api container<br/>FastAPI"]
+        UI["ui container<br/>Streamlit"]
+        WS["wso2am container<br/>gateway, publisher, dev portal"]
+        MLS["MLflow tracking server<br/>model registry"]
+    end
+
+    FRK["Frankfurter API"]
+    KGL["Kaggle history<br/>DVC-tracked"]
+    ART[("artifacts volume<br/>features, frozen model")]
+    LED[("live ledger<br/>predictions.csv, committed")]
+    CI["GitHub Actions<br/>tests on every push"]
+
+    FRK --> SCH
+    KGL --> SCH
+    SCH -->|"refresh data, skip retrain"| ART
+    SCH -->|"log today, score earlier days"| LED
+    ART --> API
+    LED --> API
+    API --> WS
+    UI -->|"Bearer token"| WS
+    MLS -.->|"register and load model"| API
+    CI -.-> API
 ```
 
-## Quickstart (Windows PowerShell)
+The main design decision for the planned version is to separate **refreshing data** from **retraining**: the model is trained once on a frozen window and versioned, a scheduled job refreshes the latest data every day without retraining, and every prediction is written to an append-only ledger and scored against the rate that actually followed. That gives a true forward track record, which is the only honest way to evaluate a model like this.
+
+## How it works
+
+| Stage | Command | Reads | Writes |
+|---|---|---|---|
+| fetch | `python -m src.components.data_fetch` | Kaggle CSV (for its last date), Frankfurter API | `data/raw/recent_rates.csv` |
+| ingest | `python -m src.components.data_ingestion` | Kaggle CSV, recent rates | `artifacts/clean.parquet` |
+| transform | `python -m src.components.data_transformation` | `clean.parquet` | `features.parquet`, `fit.parquet`, `calibration.parquet`, `test.parquet` |
+| train | `python -m src.components.model_trainer` | the three split files | `model.joblib`, `signal_config.json`, `metrics.json` |
+
+`dvc repro` runs the stages in order and skips any whose inputs and parameters have not changed. All tunable values live in `params.yaml`.
+
+**Prediction target.** For each currency and trading day *t*, the label is whether the next trading day's EUR-to-currency rate is higher. Every feature at row *t* uses information through day *t* only; a test (`test_features_have_no_lookahead`) proves that changing later data cannot change earlier features.
+
+**Data.** The Kaggle dataset `asaniczka/forex-exchange-rate-since-2004-updated-daily` (2004 to October 2026, 176 currencies, EUR base) is used for 7 currencies: USD, GBP, JPY, CHF, AUD, CAD and LKR. Weekends are dropped so a lag always means "previous trading day". A rule flags a move above 10% that reverses the next day as a data glitch; none of these 7 currencies trigger it.
+
+**Recent days.** The Kaggle file ends a few days behind. Recent rates come from the Frankfurter API. The two sources are close but not identical (for USD, the median difference on overlapping days was 0.08% and the maximum 0.35%, against a typical daily move of about 0.39%), so the merge checks the overlap, refuses to continue if the sources disagree by more than 0.5% at the median, and rescales the new rates at the last common day so no artificial jump appears at the seam.
+
+**Model.** Lags and rolling statistics of daily returns, EWMA volatility, price deviation from moving averages, calendar features and cross-currency market features feed a LightGBM classifier. The time-ordered split is: fit, then a calibration slice (Platt scaling), then a test window of about 8,000 days from May 2022. "Strength" is how far the calibrated probability is from 50/50, in tiers fixed from the calibration slice.
+
+## Results and what they mean
+
+Out-of-sample test window, 7 currencies, about 7,970 currency-days:
+
+| Measure | Value |
+|---|---|
+| Accuracy | about 51% (50.8% to 51.0%, depending on whether recent API rows are included), against 49.6% for always guessing the training majority class |
+| ROC-AUC | about 0.52 (0.5 means no skill) |
+| Log loss, calibrated | 0.693, against 0.6932 for predicting the base rate only |
+| Hit rate by strength tier (Kaggle-only run) | high 52.1% (867 days), medium 51.1% (1,723), low 50.5% (5,374) |
+
+**Reading these honestly.** The model is statistically close to a coin flip. The tier hit rates rise in the expected order, but the high tier's 52.1% on 867 days sits inside the normal luck range of roughly plus or minus 3 points around 50%, so it is a hint, not evidence. The seven pairs are all quoted against the euro and move together, so the effective sample is smaller than it looks. Several other models, a volatility target and technical indicators were tried in notebooks; none changed this picture. "High" strength means the model's most confident calls, not a likely win.
+
+## WSO2 API Manager integration
+
+Configured and verified on a local WSO2 API Manager 4.7.0: OpenAPI import and publication, OAuth2 client-credentials security, an application subscription, a 5-requests-per-minute subscription policy, and revision-based changes. The gateway returned `900902` for a missing token, `900901` for an invalid one, `404` for a resource that was not yet deployed, and `429` once the quota was exceeded.
+
+Ten calls got through a limit of five. WSO2's documentation explains why: enforcement is asynchronous and counted in fixed clock windows, so the limit is a guardrail, not an exact counter.
+
+The setup steps, the observed responses and the problems I ran into are in **[docs/wso2-integration.md](docs/wso2-integration.md)**. Not done: OAuth scopes per operation, WSO2 analytics, and production-grade TLS.
+
+## API
+
+| Method and path | Purpose |
+|---|---|
+| `GET /health` | Liveness check |
+| `GET /currencies` | Supported currency codes |
+| `GET /model-info` | Model version, data date, out-of-sample accuracy and AUC |
+| `POST /predict` | Signal for one currency: `{"currency": "LKR"}` |
+
+Example `POST /predict` response (values are illustrative):
+
+```json
+{
+  "currency": "LKR",
+  "as_of_date": "2026-10-09",
+  "for_trading_day": "2026-10-12",
+  "horizon": "next trading day",
+  "prob_up": 0.4731,
+  "direction": "down",
+  "strength": "medium",
+  "historical_hit_rate": 0.5113,
+  "historical_sample_size": 1723,
+  "model_version": "lgbm-1",
+  "disclaimer": "Educational project. Not financial advice. ..."
+}
+```
+
+`as_of_date` is the last trading day in the data. On a Friday, `for_trading_day` is the following Monday.
+
+## Quickstart
+
+Tested on Python 3.12. The gateway part also needs WSO2 API Manager 4.x and JDK 21.
 
 ```powershell
-git clone <repo-url>; cd forex-engine
+git clone https://github.com/aradhya534/forex-engine
+cd forex-engine
 py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-pip install polars duckdb pyarrow plotly jupyterlab ipykernel lightgbm scikit-learn mlflow dvc pandas
-python -m ipykernel install --user --name forex-engine
+pip install -r requirements.txt
 ```
 
-Download the dataset manually from Kaggle and place the CSV at `data/raw/daily_forex_rates.csv`:
-<https://www.kaggle.com/datasets/asaniczka/forex-exchange-rate-since-2004-updated-daily>
+**Data.** The raw dataset is tracked with DVC but no remote is configured, so download it from [Kaggle](https://www.kaggle.com/datasets/asaniczka/forex-exchange-rate-since-2004-updated-daily) and save it as `data/raw/daily_forex_rates.csv`. Check you have the same file the pipeline was built on:
 
 ```powershell
-jupyter lab
+Get-FileHash data\raw\daily_forex_rates.csv -Algorithm MD5   # expect 115C4D6F40125C05DAAD08A8F5929FCC
 ```
 
-Docker Desktop is needed from Phase 5 onward.
+**Run the pipeline and the tests.**
 
-## Data
+```powershell
+dvc repro                       # needs internet for the fetch stage
+python -m pytest tests -q       # 32 tests
+```
 
-- **File:** `daily_forex_rates.csv`, 505,223 rows, columns `currency, base_currency, currency_name, exchange_rate, date`
-- **Base currency:** always EUR (each row is the price of 1 EUR in that currency)
-- **Range:** 2004-08-30 to the present, 176 currency codes. The key is `(currency, date)`; `currency_name` is null for 6 codes, so never key on it.
-- **No** nulls in rates, no rates <= 0, no duplicate keys.
+To run offline, set `fetch.enabled: false` in `params.yaml`; the pipeline then uses the Kaggle file only.
 
-### Data findings that drive the design
+**Serve the API.**
 
-1. **Calendar changes in 2023.** Until about 2022, only weekdays are present. From late 2023 many currencies also have weekend rows. We keep **trading days only** so a lag always means "previous trading day".
-2. **Coverage is uneven.** 9 currencies go back to 2004; most start around late 2013/2014; some start in 2023 or later and cannot be modelled per currency.
-3. **Rate scales vary enormously** (about 1e-5 to millions), so the target is a **log return**, not the raw rate.
-4. **Some currencies are not modelling candidates:** pegged currencies (almost all zero returns), hyperinflation and redenominated currencies, discontinued codes, metals and other non-currencies.
-5. **Outliers are of three kinds:** one-day data glitches that snap back (repaired by rule), permanent regime breaks (kept, training target clipped), and ordinary fat tails (left alone).
+```powershell
+uvicorn src.api.main:app --port 8000
+```
 
-## Methodology
+**Put it behind WSO2** (Publisher at `https://localhost:9443/publisher`): create an API by importing `http://localhost:8000/openapi.json`, set the context to `/forex` and the endpoint to `http://localhost:8000`, deploy a revision and publish. In the Developer Portal, create an application, subscribe it to the API and generate keys. In the Admin Portal, optionally add a subscription policy such as 5 requests per minute.
 
-### Target and framing
-Each row is a (currency, trading day d). **Target:** the log return on day d. **Features:** only information through day d-1.
+**Run the Streamlit client.** Copy `.env.example` to `.env`, fill in the application's consumer key and secret, then:
 
-### Leakage rules
-- Fixed rules (drop weekends, flag glitches) may run before the split.
-- Anything fitted from data (eligibility statistics, clip bounds) is fitted on the **training window only**, and inside each cross-validation fold on that fold's training part only.
-- Split by time: 80% of trading dates for training, the rest for testing. The test set is looked at once.
-- Evaluation uses the **raw, unclipped** target.
+```powershell
+streamlit run app/main.py
+```
 
-### Cleaning rules
-- **Glitch rule:** a daily move above 5% that is at least 70% reversed the next day is flagged (`is_glitch`), blanked and forward-filled. Raw values are kept in `rate_raw` / `ret_raw`.
-- **Target clipping (training only):** per-currency 0.5% / 99.5% quantiles of the training target.
-- **Eligibility:** active in the last 7 days, at least 1,000 training rows, at least 100 test rows, zero-return share under 50%, and not in the exclusion list. This gives 125 eligible currencies.
+`.env` is git-ignored. Never commit the consumer secret; if it leaks, regenerate the keys in the Developer Portal.
 
-### Features (prototype)
-Lags 1-30 of the daily log return, rolling mean and standard deviation over 5/10/20/30 days (computed on the series shifted by one day), a short/long volatility ratio, day of week, month, and currency as a categorical. All windows are computed per currency.
+## Repository layout
 
-### Validation
-Expanding-window time-series cross-validation over unique trading dates, with a final single evaluation on the held-out test window.
+```text
+forex-engine/
+├── app/                  Streamlit client and the WSO2 gateway client
+├── artifacts/            pipeline outputs (managed by DVC)
+├── data/raw/             dataset pointer (.dvc); the CSV itself is downloaded
+├── docs/                 WSO2 API Manager walkthrough and evidence
+├── notebooks/            EDA and model experiments
+├── src/
+│   ├── api/              FastAPI service
+│   ├── components/       fetch, ingestion, transformation, training, shared helpers
+│   ├── pipeline/         prediction pipeline
+│   ├── exception.py
+│   └── logger.py
+├── tests/                32 automated tests
+├── dvc.yaml              pipeline definition
+├── params.yaml           all tunable parameters
+├── openapi.json          the API contract imported into WSO2
+└── requirements.txt
+```
 
-## Baselines and prototype results
+## Limitations
 
-Next-day return, test window starting 2022-05-06, 7 prototype currencies (USD, GBP, JPY, CHF, AUD, CAD, LKR):
-
-| Predictor | MAE | Notes |
-|---|---|---|
-| Zero return | 0.0033 | the baseline to beat |
-| Persistence (yesterday's return) | worse than zero for every currency | |
-| LightGBM, L1 loss (prototype) | about 0.0033 (ratio to zero: 1.003) | directional accuracy about 50% |
-
-**Honest reading:** daily forex returns are close to noise. In the prototype, LightGBM does not beat the zero predictor on next-day return, and directional accuracy is at chance. The value of this project is the reproducible, versioned, served pipeline, not trading alpha. A next-day **volatility** target looks more learnable (a quick single-run check gave about 7% lower MAE than a rolling-volatility baseline); this is under evaluation and not yet part of the pipeline.
-
-_Update this section with MLflow-tracked results once Phase 3 is done._
-
-## API, gateway, portal, deployment
-
-_Planned. These sections will document the FastAPI endpoints and schemas (Phase 4), the WSO2 API definition, OAuth2 flow and throttling tiers (Phase 5), the Streamlit app (Phase 6), and `docker-compose` usage (Phase 7)._
+- The model has almost no predictive skill; treat the API as a demonstration of API management, not a trading tool.
+- The seven pairs are correlated, so their daily outcomes are not independent evidence.
+- The recent rates come from a different source than the historical file; the merge checks and splices them, but a small source mismatch remains.
+- The dataset has no remote storage configured, so it must be downloaded manually.
+- The stack runs locally; there is no container setup or CI yet.
 
 ## Disclaimer
 
-Educational project. Not financial advice, and not intended for trading.
+For education only. Nothing here is financial advice, and the signal should not be used to trade.
